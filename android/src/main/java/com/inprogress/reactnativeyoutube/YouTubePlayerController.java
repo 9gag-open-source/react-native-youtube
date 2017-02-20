@@ -12,6 +12,8 @@ import com.google.android.youtube.player.YouTubePlayer;
 public class YouTubePlayerController implements
         YouTubePlayer.OnInitializedListener, YouTubePlayer.PlayerStateChangeListener, YouTubePlayer.PlaybackEventListener, YouTubePlayer.OnFullscreenListener {
 
+    private static final String TAG = "YouTubePlayerController";
+
     String videoId = null;
 
     YouTubePlayer mYouTubePlayer;
