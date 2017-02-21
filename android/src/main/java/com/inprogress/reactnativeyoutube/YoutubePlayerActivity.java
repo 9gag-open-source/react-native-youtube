@@ -1,13 +1,13 @@
 package com.inprogress.reactnativeyoutube;
 
-import android.content.Context;
 import android.content.Intent;
+import android.content.pm.ActivityInfo;
 import android.os.Bundle;
+import android.os.Handler;
 import android.support.annotation.Nullable;
-import android.util.AttributeSet;
-import android.widget.RelativeLayout;
 
 import com.facebook.react.ReactActivity;
+import com.facebook.react.bridge.ReadableMap;
 
 /**
  * Created by raymond on 20/2/2017.
@@ -15,6 +15,8 @@ import com.facebook.react.ReactActivity;
 
 public class YoutubePlayerActivity extends ReactActivity {
 
+    private static final boolean DEBUG = true;
+    private static final String TAG = "YoutubePlayerActivity";
     private YouTubeView youtubeView;
 
     @Override
@@ -24,7 +26,7 @@ public class YoutubePlayerActivity extends ReactActivity {
 
         youtubeView = (YouTubeView) findViewById(R.id.youtubeView);
 
-        Intent i = getIntent();
+        final Intent i = getIntent();
         youtubeView.setApiKey(i.getStringExtra(YouTubeManager.PROP_API_KEY));
         youtubeView.setVideoId(i.getStringExtra(YouTubeManager.PROP_VIDEO_ID));
         youtubeView.setPlay(i.getBooleanExtra(YouTubeManager.PROP_PLAY, false));
@@ -36,7 +38,33 @@ public class YoutubePlayerActivity extends ReactActivity {
         youtubeView.setControls(i.getIntExtra(YouTubeManager.PROP_CONTROLS, 1));
         youtubeView.setShowInfo(i.getBooleanExtra(YouTubeManager.PROP_SHOW_INFO, true));
         youtubeView.setFullscreen(i.getBooleanExtra(YouTubeManager.PROP_FULLSCREEN, true));
+        youtubeView.setStartTime(i.getIntExtra(YouTubeManager.PROP_START_TIME, 0));
+        youtubeView.setYoutubeStateListener(new YouTubeStateListener() {
+            @Override
+            public void onYoutubeVideoReady(ReadableMap readableMap) {
 
+            }
+
+            @Override
+            public void onYoutubeVideoChangeState(ReadableMap readableMap) {
+                if ("videoStarted".equals(readableMap.getString("state"))) {
+                    int startTs = i.getIntExtra(YouTubeManager.PROP_START_TIME, 0);
+                    if (startTs != 0) {
+                        youtubeView.seekTo(startTs);
+                    }
+                }
+            }
+
+            @Override
+            public void onYoutubeVideoChangeQuality(ReadableMap readableMap) {
+
+            }
+
+            @Override
+            public void onYoutubeVideoError(ReadableMap readableMap) {
+
+            }
+        });
 
         youtubeView.bindFragment();
     }

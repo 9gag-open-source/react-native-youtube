@@ -29,6 +29,7 @@ public class YouTubePlayerController implements
     private boolean loop = false;
     private boolean playInline = false;
     private boolean fullscreen = true;
+    private int startTime = 0;
 
 
     public YouTubePlayerController(YouTubeView youTubeView) {
@@ -61,7 +62,11 @@ public class YouTubePlayerController implements
                     }
                 }
                 else {
-                    mYouTubePlayer.cueVideo(videoId);
+                    if (startTime != 0) {
+                        mYouTubePlayer.cueVideo(videoId, startTime * 1000); // In second
+                    } else {
+                        mYouTubePlayer.cueVideo(videoId);
+                    }
                 }
             }
             updateControls();
@@ -78,7 +83,7 @@ public class YouTubePlayerController implements
     public void onPlaying() {
         mYouTubeView.didChangeToState("playing");
 
-        // When inline playback is not allowed, transition the 
+        // When inline playback is not allowed, transition the
         // player to full-screen.
         if (!isPlayInline()) {
             mYouTubePlayer.setFullscreen(true);
@@ -299,6 +304,9 @@ public class YouTubePlayerController implements
         this.playInline = playInline;
     }
 
+    public void setStartTime(int startTime) {
+        this.startTime = startTime;
+    }
 
     public boolean isPlay() {
         return play;
@@ -334,5 +342,9 @@ public class YouTubePlayerController implements
 
     public boolean isFullscreen() {
         return fullscreen;
+    }
+
+    public int getStartTime() {
+        return startTime;
     }
 }

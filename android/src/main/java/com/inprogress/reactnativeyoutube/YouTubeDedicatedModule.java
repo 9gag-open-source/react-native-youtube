@@ -57,6 +57,9 @@ public class YouTubeDedicatedModule extends ReactContextBaseJavaModule {
         boolean fullScreen = !map.hasKey(YouTubeManager.PROP_FULLSCREEN)
                 || map.getBoolean(YouTubeManager.PROP_FULLSCREEN); // Default fullscreen
 
+        int startTs = map.hasKey(YouTubeManager.PROP_START_TIME)
+                ? map.getInt(YouTubeManager.PROP_START_TIME)
+                : 0;
 
         Intent intent = new Intent(getCurrentActivity(), YoutubePlayerActivity.class);
 
@@ -71,6 +74,7 @@ public class YouTubeDedicatedModule extends ReactContextBaseJavaModule {
         intent.putExtra(YouTubeManager.PROP_CONTROLS, controls);
         intent.putExtra(YouTubeManager.PROP_SHOW_INFO, showInfo);
         intent.putExtra(YouTubeManager.PROP_FULLSCREEN, fullScreen);
+        intent.putExtra(YouTubeManager.PROP_START_TIME, startTs);
 
         getCurrentActivity().startActivity(intent);
     }

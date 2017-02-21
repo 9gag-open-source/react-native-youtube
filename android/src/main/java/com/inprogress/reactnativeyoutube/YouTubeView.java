@@ -22,7 +22,10 @@ import com.google.android.youtube.player.YouTubePlayerFragment;
 
 public class YouTubeView extends RelativeLayout {
 
+    private static final String TAG = "YouTubeView";
+
     YouTubePlayerController youtubeController;
+    YouTubeStateListener youtubeStateListener;
     private YouTubePlayerFragment youTubePlayerFragment;
     public static String youtube_key;
 
@@ -58,7 +61,7 @@ public class YouTubeView extends RelativeLayout {
 
     public void bindFragment() {
         FragmentManager fragmentManager;
-        if (getContext() instanceof ThemedReactContext) {
+        if (isReactContext()) {
             fragmentManager = getReactContext().getCurrentActivity().getFragmentManager();
         } else {
             fragmentManager = ((Activity) getContext()).getFragmentManager();
@@ -92,9 +95,17 @@ public class YouTubeView extends RelativeLayout {
     public void playerViewDidBecomeReady() {
         try {
             WritableMap event = Arguments.createMap();
-            ReactContext reactContext = (ReactContext) getContext();
             event.putInt("target", getId());
-            reactContext.getJSModule(RCTEventEmitter.class).receiveEvent(getId(), "ready", event);
+
+            if (isReactContext()) {
+                ReactContext reactContext = (ReactContext) getContext();
+                reactContext.getJSModule(RCTEventEmitter.class).receiveEvent(getId(), "ready", event);
+            }
+
+            if (youtubeStateListener != null) {
+                youtubeStateListener.onYoutubeVideoReady(event);
+            }
+
         } catch (Exception e) {
 
         }
@@ -106,39 +117,78 @@ public class YouTubeView extends RelativeLayout {
             WritableMap event = Arguments.createMap();
             event.putString("state", param);
             event.putInt("target", getId());
-            ReactContext reactContext = (ReactContext) getContext();
-            reactContext.getJSModule(RCTEventEmitter.class).receiveEvent(getId(), "state", event);
-        } catch (Exception e) {
 
+            if (isReactContext()) {
+                ReactContext reactContext = (ReactContext) getContext();
+                reactContext.getJSModule(RCTEventEmitter.class).receiveEvent(getId(), "state", event);
+            }
+
+            if (youtubeStateListener != null) {
+                youtubeStateListener.onYoutubeVideoChangeState(event);
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "didChangeToState: ", e);
         }
     }
 
 
     public void didChangeToQuality(String param) {
-        WritableMap event = Arguments.createMap();
-        event.putString("quality", param);
-        event.putInt("target", getId());
-        ReactContext reactContext = (ReactContext) getContext();
-        reactContext.getJSModule(RCTEventEmitter.class).receiveEvent(getId(), "quality", event);
+        try {
+            WritableMap event = Arguments.createMap();
+            event.putString("quality", param);
+            event.putInt("target", getId());
+            if (isReactContext()) {
+                ReactContext reactContext = (ReactContext) getContext();
+                reactContext.getJSModule(RCTEventEmitter.class).receiveEvent(getId(), "quality", event);
+            }
+
+            if (youtubeStateListener != null) {
+                youtubeStateListener.onYoutubeVideoChangeQuality(event);
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "didChangeToQuality: ", e);
+        }
     }
 
 
     public void didPlayTime(String current, String duration) {
-        WritableMap event = Arguments.createMap();
-        event.putString("currentTime", current);
-        event.putString("duration", duration);
-        event.putInt("target", getId());
-        ReactContext reactContext = (ReactContext) getContext();
-        reactContext.getJSModule(RCTEventEmitter.class).receiveEvent(getId(), "progress", event);
+        try {
+            WritableMap event = Arguments.createMap();
+            event.putString("currentTime", current);
+            event.putString("duration", duration);
+            event.putInt("target", getId());
+
+            if (isReactContext()) {
+                ReactContext reactContext = (ReactContext) getContext();
+                reactContext.getJSModule(RCTEventEmitter.class).receiveEvent(getId(), "progress", event);
+            }
+
+            if (youtubeStateListener != null) {
+                youtubeStateListener.onYoutubeVideoError(event);
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "didPlayTime: ", e);
+        }
     }
 
 
     public void receivedError(String param) {
-        WritableMap event = Arguments.createMap();
-        ReactContext reactContext = (ReactContext) getContext();
-        event.putString("error", param);
-        event.putInt("target", getId());
-        reactContext.getJSModule(RCTEventEmitter.class).receiveEvent(getId(), "error", event);
+        try {
+            WritableMap event = Arguments.createMap();
+            event.putString("error", param);
+            event.putInt("target", getId());
+
+            if (isReactContext()) {
+                ReactContext reactContext = (ReactContext) getContext();
+                reactContext.getJSModule(RCTEventEmitter.class).receiveEvent(getId(), "error", event);
+            }
+
+            if (youtubeStateListener != null) {
+                youtubeStateListener.onYoutubeVideoError(event);
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "receivedError: ", e);
+        }
     }
 
 
@@ -184,5 +234,17 @@ public class YouTubeView extends RelativeLayout {
 
     public void setFullscreen(Boolean bool) {
         youtubeController.setFullscreen(bool);
+    }
+
+    public void setStartTime(Integer startTime) {
+        youtubeController.setStartTime(startTime);
+    }
+
+    public void setYoutubeStateListener(YouTubeStateListener youtubeStateListener) {
+        this.youtubeStateListener = youtubeStateListener;
+    }
+
+    private boolean isReactContext() {
+        return getContext() instanceof ReactContext;
     }
 }
