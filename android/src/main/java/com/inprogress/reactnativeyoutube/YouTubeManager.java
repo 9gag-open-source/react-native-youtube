@@ -1,8 +1,10 @@
 package com.inprogress.reactnativeyoutube;
 
+import android.content.Intent;
 import android.support.annotation.Nullable;
 import android.util.Log;
 
+import com.facebook.react.bridge.ReactContext;
 import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.common.MapBuilder;
 import com.facebook.react.uimanager.SimpleViewManager;
@@ -137,5 +139,11 @@ public class YouTubeManager extends SimpleViewManager<YouTubeView> {
             YouTubeView view, @Nullable Boolean param) {
         //Log.e(PROP_FULLSCREEN,""+param);
         view.setFullscreen(param);
+    }
+
+    @Override
+    protected void onAfterUpdateTransaction(YouTubeView view) {
+        super.onAfterUpdateTransaction(view);
+        view.bindFragment();
     }
 }
