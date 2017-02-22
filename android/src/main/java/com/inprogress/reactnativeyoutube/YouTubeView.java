@@ -8,14 +8,11 @@ import android.content.Context;
 import android.os.Build;
 import android.util.AttributeSet;
 import android.util.Log;
-import android.view.ViewTreeObserver;
 import android.widget.RelativeLayout;
 
 import com.facebook.react.bridge.Arguments;
 import com.facebook.react.bridge.ReactContext;
-import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.bridge.WritableMap;
-import com.facebook.react.uimanager.ThemedReactContext;
 import com.facebook.react.uimanager.events.RCTEventEmitter;
 import com.google.android.youtube.player.YouTubePlayerFragment;
 
@@ -242,6 +239,10 @@ public class YouTubeView extends RelativeLayout {
 
     public void setYoutubeStateListener(YouTubeStateListener youtubeStateListener) {
         this.youtubeStateListener = youtubeStateListener;
+    }
+
+    public int getCurrentTime() {
+        return youtubeController.getCurrentTime();
     }
 
     private boolean isReactContext() {

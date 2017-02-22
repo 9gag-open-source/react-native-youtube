@@ -1,6 +1,8 @@
 package com.inprogress.reactnativeyoutube;
 
+import android.app.Activity;
 import android.content.Context;
+import android.content.ContextWrapper;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ProgressBar;
@@ -38,38 +40,44 @@ public class YouTubePlayerController implements
 
     @Override
     public void onInitializationSuccess(YouTubePlayer.Provider provider, YouTubePlayer youTubePlayer, boolean wasRestored) {
+        mYouTubePlayer = youTubePlayer;
+        // Intall listeners on the youtube player
+        mYouTubePlayer.setPlayerStateChangeListener(this);
+        mYouTubePlayer.setPlaybackEventListener(this);
+        mYouTubePlayer.setOnFullscreenListener(this);
+
+        // Update config
+        mYouTubePlayer.setShowFullscreenButton(fullscreen);
+
+        // Emit 'onReady' event for player
+        mYouTubeView.playerViewDidBecomeReady();
+        setLoaded(true);
+
         if (!wasRestored) {
-
-            // Intall listeners on the youtube player
-            mYouTubePlayer = youTubePlayer;
-            mYouTubePlayer.setPlayerStateChangeListener(this);
-            mYouTubePlayer.setPlaybackEventListener(this);
-            mYouTubePlayer.setOnFullscreenListener(this);
-
-            // Update config
-            mYouTubePlayer.setShowFullscreenButton(fullscreen);
-
-            // Emit 'onReady' event for player
-            mYouTubeView.playerViewDidBecomeReady();
-            setLoaded(true);
-
             // Load/start the video in case it was initially provided
             if (videoId != null) {
                 if (isPlay()) {
-                    mYouTubePlayer.loadVideo(videoId);
+                    if (startTime != 0) {
+                        mYouTubePlayer.loadVideo(videoId, startTime * 1000); // Start time is in second, but require millisecond
+                    } else {
+                        mYouTubePlayer.loadVideo(videoId);
+                    }
+
                     if (!isPlayInline()) {
                         mYouTubePlayer.setFullscreen(true);
                     }
                 }
                 else {
                     if (startTime != 0) {
-                        mYouTubePlayer.cueVideo(videoId, startTime * 1000); // In second
+                        mYouTubePlayer.cueVideo(videoId, startTime * 1000); // Start time is in second, but require millisecond
                     } else {
                         mYouTubePlayer.cueVideo(videoId);
                     }
                 }
             }
             updateControls();
+        } else {
+            mYouTubePlayer.loadVideo(videoId, startTime * 1000);
         }
     }
 
@@ -210,7 +218,6 @@ public class YouTubePlayerController implements
         }
     }
 
-
     /**
      * GETTER &SETTER
      **/
@@ -346,5 +353,10 @@ public class YouTubePlayerController implements
 
     public int getStartTime() {
         return startTime;
+    }
+
+    public int getCurrentTime() {
+        if (mYouTubePlayer == null) return 0;
+        return mYouTubePlayer.getCurrentTimeMillis() / 1000;
     }
 }
