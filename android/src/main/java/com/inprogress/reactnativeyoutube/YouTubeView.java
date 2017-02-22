@@ -14,6 +14,7 @@ import com.facebook.react.bridge.Arguments;
 import com.facebook.react.bridge.ReactContext;
 import com.facebook.react.bridge.WritableMap;
 import com.facebook.react.uimanager.events.RCTEventEmitter;
+import com.google.android.youtube.player.YouTubePlayer;
 import com.google.android.youtube.player.YouTubePlayerFragment;
 
 
@@ -73,13 +74,20 @@ public class YouTubeView extends RelativeLayout {
     @Override
     protected void onDetachedFromWindow() {
         try {
-            FragmentManager fragmentManager = getReactContext().getCurrentActivity().getFragmentManager();
+            youtubeController.destroy();
+            FragmentManager fragmentManager;
+            if (isReactContext()) {
+                fragmentManager = getReactContext().getCurrentActivity().getFragmentManager();
+            } else {
+                fragmentManager = ((Activity) getContext()).getFragmentManager();
+            }
             youTubePlayerFragment = (YouTubePlayerFragment)
                     fragmentManager.findFragmentById(R.id.youtubeplayerfragment);
             FragmentTransaction ft = fragmentManager.beginTransaction();
             ft.remove(youTubePlayerFragment);
             ft.commit();
         } catch (Exception e) {
+            Log.e(TAG, "onDetachedFromWindow: ", e);
         }
         super.onDetachedFromWindow();
     }
@@ -89,10 +97,11 @@ public class YouTubeView extends RelativeLayout {
     }
 
 
-    public void playerViewDidBecomeReady() {
+    public void playerViewDidBecomeReady(YouTubePlayer player) {
         try {
             WritableMap event = Arguments.createMap();
             event.putInt("target", getId());
+            event.putInt("videoLength", player.getDurationMillis());
 
             if (isReactContext()) {
                 ReactContext reactContext = (ReactContext) getContext();
@@ -108,12 +117,32 @@ public class YouTubeView extends RelativeLayout {
         }
     }
 
+    public void didOnSeekTo(int fromTime, int toTime) {
+        try {
+            WritableMap event = Arguments.createMap();
+            event.putInt("seekFrom", fromTime);
+            event.putInt("seekTo", toTime);
+            if (isReactContext()) {
+                ReactContext reactContext = (ReactContext) getContext();
+                reactContext.getJSModule(RCTEventEmitter.class).receiveEvent(getId(), "seek", event);
+            }
+            if (youtubeStateListener != null) {
+                youtubeStateListener.onYoutubeVideoSeekTo(event);
+            }
+        } catch (Exception e) {
 
-    public void didChangeToState(String param) {
+        }
+    }
+
+    public void didChangeToState(String param, YouTubePlayer youTubePlayer) {
         try {
             WritableMap event = Arguments.createMap();
             event.putString("state", param);
             event.putInt("target", getId());
+            if (youTubePlayer != null) {
+                event.putInt("videoLength", youTubePlayer.getDurationMillis());
+                event.putInt("currentTime", youTubePlayer.getCurrentTimeMillis());
+            }
 
             if (isReactContext()) {
                 ReactContext reactContext = (ReactContext) getContext();
@@ -148,11 +177,11 @@ public class YouTubeView extends RelativeLayout {
     }
 
 
-    public void didPlayTime(String current, String duration) {
+    public void didPlayTime(int current, int duration) {
         try {
             WritableMap event = Arguments.createMap();
-            event.putString("currentTime", current);
-            event.putString("duration", duration);
+            event.putInt("currentTime", current);
+            event.putInt("videoLength", duration);
             event.putInt("target", getId());
 
             if (isReactContext()) {
@@ -161,7 +190,7 @@ public class YouTubeView extends RelativeLayout {
             }
 
             if (youtubeStateListener != null) {
-                youtubeStateListener.onYoutubeVideoError(event);
+                youtubeStateListener.onYoutubeVideoProgress(event);
             }
         } catch (Exception e) {
             Log.e(TAG, "didPlayTime: ", e);

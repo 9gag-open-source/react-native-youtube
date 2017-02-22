@@ -5,10 +5,17 @@ import android.content.pm.ActivityInfo;
 import android.content.res.Configuration;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
+import android.util.Log;
 import android.view.View;
 
 import com.facebook.react.ReactActivity;
 import com.facebook.react.bridge.ReadableMap;
+import com.facebook.react.uimanager.UIManagerModule;
+import com.facebook.react.uimanager.events.EventDispatcher;
+import com.inprogress.reactnativeyoutube.event.VideoErrorEvent;
+import com.inprogress.reactnativeyoutube.event.VideoProgressEvent;
+import com.inprogress.reactnativeyoutube.event.VideoSeekEvent;
+import com.inprogress.reactnativeyoutube.event.VideoStateEvent;
 
 /**
  * Created by raymond on 20/2/2017.
@@ -21,26 +28,31 @@ public class YoutubePlayerActivity extends ReactActivity {
 
     private YouTubeView youtubeView;
     private int startTs;
+    private EventDispatcher mEventDispatcher;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_youtube);
-
+        mEventDispatcher = getReactInstanceManager().getCurrentReactContext().getNativeModule(UIManagerModule.class).getEventDispatcher();
         youtubeView = (YouTubeView) findViewById(R.id.youtubeView);
 
         final Intent i = getIntent();
         final boolean loop;
+        final boolean autoPlay;
+        final int originalStartTs = i.getIntExtra(YouTubeManager.PROP_START_TIME, 0);
+
+        final int viewId = i.getIntExtra(YouTubeManager.PROP_INTERNAL_VIEW_ID, 0);
 
         if (savedInstanceState != null) {
             startTs = savedInstanceState.getInt(YouTubeManager.PROP_START_TIME);
         } else {
-            startTs = i.getIntExtra(YouTubeManager.PROP_START_TIME, 0);
+            startTs = originalStartTs;
         }
 
         youtubeView.setApiKey(i.getStringExtra(YouTubeManager.PROP_API_KEY));
         youtubeView.setVideoId(i.getStringExtra(YouTubeManager.PROP_VIDEO_ID));
-        youtubeView.setPlay(i.getBooleanExtra(YouTubeManager.PROP_PLAY, false));
+        youtubeView.setPlay(autoPlay = i.getBooleanExtra(YouTubeManager.PROP_PLAY, false));
         youtubeView.setHidden(i.getBooleanExtra(YouTubeManager.PROP_HIDDEN, false));
         youtubeView.setInline(i.getBooleanExtra(YouTubeManager.PROP_INLINE, false));
         youtubeView.setRelated(i.getBooleanExtra(YouTubeManager.PROP_REL, false));
@@ -58,10 +70,38 @@ public class YoutubePlayerActivity extends ReactActivity {
 
             @Override
             public void onYoutubeVideoChangeState(ReadableMap readableMap) {
+                Log.d(TAG, "onYoutubeVideoChangeState: " + readableMap);
+
                 String state = readableMap.hasKey("state") ? readableMap.getString("state") : "";
                 switch (state) {
+                    case "playing": {
+                        // TODO: 22/2/2017
+                        int videoLength;
+                        int currentVideoTime = readableMap.getInt("currentTime") / 1000;
+                        int endTime = videoLength = readableMap.getInt("videoLength") / 1000; // TODO: End time suppose to be able to specify in the future
+                        mEventDispatcher.dispatchEvent(new VideoStateEvent(viewId, currentVideoTime,
+                                videoLength, originalStartTs, endTime,
+                                autoPlay, VideoStateEvent.STATE_PLAYING));
+                        break;
+                    }
+                    case "paused": {
+                        // TODO: 22/2/2017
+                        int videoLength;
+                        int currentVideoTime = readableMap.getInt("currentTime") / 1000;
+                        int endTime = videoLength = readableMap.getInt("videoLength") / 1000; // TODO: End time suppose to be able to specify in the future
+                        mEventDispatcher.dispatchEvent(new VideoStateEvent(viewId, currentVideoTime,
+                                videoLength, originalStartTs, endTime,
+                                autoPlay, VideoStateEvent.STATE_PAUSED));
+                        break;
+                    }
                     case "ended": {
                         if (!loop) {
+                            int videoLength;
+                            int currentVideoTime = readableMap.getInt("currentTime") / 1000;
+                            int endTime = videoLength = readableMap.getInt("videoLength") / 1000; // TODO: End time suppose to be able to specify in the future
+                            mEventDispatcher.dispatchEvent(new VideoStateEvent(viewId, currentVideoTime,
+                                    videoLength, originalStartTs, endTime,
+                                    autoPlay, VideoStateEvent.STATE_ENDED));
                             finish();
                         }
                         break;
@@ -78,7 +118,24 @@ public class YoutubePlayerActivity extends ReactActivity {
 
             @Override
             public void onYoutubeVideoError(ReadableMap readableMap) {
+                mEventDispatcher.dispatchEvent(new VideoErrorEvent(viewId, readableMap.getString("error")));
+            }
 
+            @Override
+            public void onYoutubeVideoProgress(ReadableMap readableMap) {
+                /**
+                 * {@link YouTubeView#didPlayTime(int, int)} The time is in millisecond, change it to second
+                 */
+                int currentVideoTime = readableMap.getInt("currentTime") / 1000;
+                int videoLength = readableMap.getInt("videoLength") / 1000;
+                mEventDispatcher.dispatchEvent(new VideoProgressEvent(viewId, currentVideoTime, videoLength));
+            }
+
+            @Override
+            public void onYoutubeVideoSeekTo(ReadableMap readableMap) {
+                int seekFrom = readableMap.getInt("seekFrom") / 1000;
+                int seekTo = readableMap.getInt("seekTo") / 1000;
+                mEventDispatcher.dispatchEvent(new VideoSeekEvent(viewId, seekFrom, seekTo));
             }
         });
 

@@ -2,6 +2,7 @@ package com.inprogress.reactnativeyoutube;
 
 import android.support.annotation.Nullable;
 import android.util.Log;
+import android.view.View;
 
 import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.common.MapBuilder;
@@ -17,6 +18,12 @@ public class YouTubeManager extends SimpleViewManager<YouTubeView> {
     public static final String REACT_CLASS = "ReactYouTube";
 
     public YouTubeView mYouTubeView;
+
+    /**
+     * An internal property to pass {@link View#getId()}
+     * to {@link YoutubePlayerActivity} for triggering RN events
+     */
+    public static final String PROP_INTERNAL_VIEW_ID = "viewId";
 
     public static final String PROP_VIDEO_ID = "videoId";
     public static final String PROP_API_KEY = "apiKey";

@@ -11,4 +11,6 @@ public interface YouTubeStateListener {
     void onYoutubeVideoChangeState(ReadableMap readableMap);
     void onYoutubeVideoChangeQuality(ReadableMap readableMap);
     void onYoutubeVideoError(ReadableMap readableMap);
+    void onYoutubeVideoProgress(ReadableMap readableMap);
+    void onYoutubeVideoSeekTo(ReadableMap readableMap);
 }
