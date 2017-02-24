@@ -13,7 +13,6 @@ import com.facebook.react.bridge.ReadableMap;
 import com.facebook.react.uimanager.UIManagerModule;
 import com.facebook.react.uimanager.events.EventDispatcher;
 import com.inprogress.reactnativeyoutube.event.VideoErrorEvent;
-import com.inprogress.reactnativeyoutube.event.VideoProgressEvent;
 import com.inprogress.reactnativeyoutube.event.VideoSeekEvent;
 import com.inprogress.reactnativeyoutube.event.VideoStateEvent;
 
@@ -127,8 +126,13 @@ public class YoutubePlayerActivity extends ReactActivity {
                  * {@link YouTubeView#didPlayTime(int, int)} The time is in millisecond, change it to second
                  */
                 int currentVideoTime = readableMap.getInt("currentTime") / 1000;
-                int videoLength = readableMap.getInt("videoLength") / 1000;
-                mEventDispatcher.dispatchEvent(new VideoProgressEvent(viewId, currentVideoTime, videoLength));
+                int videoLength;
+                int endTime = videoLength = readableMap.getInt("videoLength") / 1000;
+
+
+                mEventDispatcher.dispatchEvent(new VideoStateEvent(viewId, currentVideoTime,
+                        videoLength, originalStartTs, endTime,
+                        autoPlay, VideoStateEvent.STATE_PROGRESS));
             }
 
             @Override
