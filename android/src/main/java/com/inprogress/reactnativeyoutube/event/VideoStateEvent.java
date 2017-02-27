@@ -19,6 +19,7 @@ public class VideoStateEvent extends Event<VideoStateEvent> {
     public static final String STATE_PLAYING = "playing";
     public static final String STATE_PAUSED = "paused";
     public static final String STATE_ENDED = "ended";
+    public static final String STATE_CANCELLED = "cancelled";
     public static final String STATE_PROGRESS = "progress";
 
     public VideoStateEvent(int viewTag,
@@ -47,6 +48,8 @@ public class VideoStateEvent extends Event<VideoStateEvent> {
                 return "videoSourceOnComplete";
             case STATE_PROGRESS:
                 return "videoSourceOnProgress";
+            case STATE_CANCELLED:
+                return "videoSourceOnCancel";
             default:
                 return null;
         }

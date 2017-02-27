@@ -28,6 +28,8 @@ public class YoutubePlayerActivity extends ReactActivity {
     private YouTubeView youtubeView;
     private int startTs;
     private EventDispatcher mEventDispatcher;
+    private boolean isFinishByBack;
+    private boolean hasSeekTriggered;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -75,22 +77,35 @@ public class YoutubePlayerActivity extends ReactActivity {
                 switch (state) {
                     case "playing": {
                         // TODO: 22/2/2017
-                        int videoLength;
-                        int currentVideoTime = readableMap.getInt("currentTime") / 1000;
-                        int endTime = videoLength = readableMap.getInt("videoLength") / 1000; // TODO: End time suppose to be able to specify in the future
-                        mEventDispatcher.dispatchEvent(new VideoStateEvent(viewId, currentVideoTime,
-                                videoLength, originalStartTs, endTime,
-                                autoPlay, VideoStateEvent.STATE_PLAYING));
+                        if (!hasSeekTriggered) {
+                            int videoLength;
+                            int currentVideoTime = readableMap.getInt("currentTime") / 1000;
+                            int endTime = videoLength = readableMap.getInt("videoLength") / 1000; // TODO: End time suppose to be able to specify in the future
+                            mEventDispatcher.dispatchEvent(new VideoStateEvent(viewId, currentVideoTime,
+                                    videoLength, originalStartTs, endTime,
+                                    autoPlay, VideoStateEvent.STATE_PLAYING));
+                        }
+                        hasSeekTriggered = false;
                         break;
                     }
                     case "paused": {
-                        // TODO: 22/2/2017
                         int videoLength;
                         int currentVideoTime = readableMap.getInt("currentTime") / 1000;
                         int endTime = videoLength = readableMap.getInt("videoLength") / 1000; // TODO: End time suppose to be able to specify in the future
-                        mEventDispatcher.dispatchEvent(new VideoStateEvent(viewId, currentVideoTime,
-                                videoLength, originalStartTs, endTime,
-                                autoPlay, VideoStateEvent.STATE_PAUSED));
+
+                        String ouputEventName = null;
+                        if (isFinishByBack) {
+                            ouputEventName = VideoStateEvent.STATE_CANCELLED;
+                        } else {
+                            ouputEventName = VideoStateEvent.STATE_PAUSED;
+                        }
+
+                        if (currentVideoTime < videoLength) {
+                            mEventDispatcher.dispatchEvent(new VideoStateEvent(viewId, currentVideoTime,
+                                    videoLength, originalStartTs, endTime,
+                                    autoPlay, ouputEventName));
+                        }
+
                         break;
                     }
                     case "ended": {
@@ -140,6 +155,8 @@ public class YoutubePlayerActivity extends ReactActivity {
                 int seekFrom = readableMap.getInt("seekFrom") / 1000;
                 int seekTo = readableMap.getInt("seekTo") / 1000;
                 mEventDispatcher.dispatchEvent(new VideoSeekEvent(viewId, seekFrom, seekTo));
+
+                hasSeekTriggered = true;
             }
         });
 
@@ -158,8 +175,9 @@ public class YoutubePlayerActivity extends ReactActivity {
     public void onBackPressed() {
         if (ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE == getResources().getConfiguration().orientation ||
                 ActivityInfo.SCREEN_ORIENTATION_USER == getResources().getConfiguration().orientation) {
-            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+            youtubeView.setFullscreen(false);
         } else {
+            isFinishByBack = true;
             finish();
         }
     }
