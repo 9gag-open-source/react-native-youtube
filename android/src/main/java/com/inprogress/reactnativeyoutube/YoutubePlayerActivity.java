@@ -30,6 +30,8 @@ public class YoutubePlayerActivity extends ReactActivity {
     private EventDispatcher mEventDispatcher;
     private boolean isFinishByBack;
     private boolean hasSeekTriggered;
+    private boolean isBufferingFirstTime = true;
+    private boolean isAfterBuffering;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -71,13 +73,13 @@ public class YoutubePlayerActivity extends ReactActivity {
 
             @Override
             public void onYoutubeVideoChangeState(ReadableMap readableMap) {
-                Log.d(TAG, "onYoutubeVideoChangeState: " + readableMap);
+                // Log.d(TAG, "onYoutubeVideoChangeState: " + readableMap);
 
                 String state = readableMap.hasKey("state") ? readableMap.getString("state") : "";
                 switch (state) {
                     case "playing": {
                         // TODO: 22/2/2017
-                        if (!hasSeekTriggered) {
+                        if ((!hasSeekTriggered && !isAfterBuffering) || isBufferingFirstTime) {
                             int videoLength;
                             int currentVideoTime = readableMap.getInt("currentTime") / 1000;
                             int endTime = videoLength = readableMap.getInt("videoLength") / 1000; // TODO: End time suppose to be able to specify in the future
@@ -85,7 +87,14 @@ public class YoutubePlayerActivity extends ReactActivity {
                                     videoLength, originalStartTs, endTime,
                                     autoPlay, VideoStateEvent.STATE_PLAYING));
                         }
+                        isBufferingFirstTime = false;
+                        // So, after first "playing" is triggered, we know that it has called "buffering" state, mark as false here
+                        isAfterBuffering = false;
                         hasSeekTriggered = false;
+                        break;
+                    }
+                    case "buffering": {
+                        isAfterBuffering = true;
                         break;
                     }
                     case "paused": {
