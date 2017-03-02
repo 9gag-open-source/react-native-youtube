@@ -35,6 +35,7 @@ export default class YouTube extends Component {
     // TODO: Make this work on android, the native player doesn't support it right now...
     onProgress: PropTypes.func,
     loop: PropTypes.bool,
+    startTs: PropTypes.number,
      ...View.propTypes,
   };
 

@@ -1,12 +1,15 @@
 package com.inprogress.reactnativeyoutube;
 
-import android.content.Context;
+import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ProgressBar;
 
 import com.google.android.youtube.player.YouTubeInitializationResult;
 import com.google.android.youtube.player.YouTubePlayer;
+
+import java.util.Timer;
+import java.util.TimerTask;
 
 
 public class YouTubePlayerController implements
@@ -29,42 +32,70 @@ public class YouTubePlayerController implements
     private boolean loop = false;
     private boolean playInline = false;
     private boolean fullscreen = true;
+    private int startTime = 0;
 
+    private int mLastCheckTime;
+    private Timer mCheckProgressTimerTask;
 
     public YouTubePlayerController(YouTubeView youTubeView) {
         this.mYouTubeView = youTubeView;
+        mCheckProgressTimerTask = new Timer("youtube-checkprogress");
+        mCheckProgressTimerTask.scheduleAtFixedRate(new TimerTask() {
+            @Override
+            public void run() {
+                try {
+                    if (mYouTubeView == null ||
+                            mYouTubePlayer == null ||
+                            !mYouTubePlayer.isPlaying()) return;
+                    mLastCheckTime = mYouTubePlayer.getCurrentTimeMillis();
+                    mYouTubeView.didPlayTime(mLastCheckTime, mYouTubePlayer.getDurationMillis());
+                } catch (Exception e) {
+                    Log.e(TAG, "run: ", e);
+                }
+            }
+        }, 0, 500);
     }
 
     @Override
     public void onInitializationSuccess(YouTubePlayer.Provider provider, YouTubePlayer youTubePlayer, boolean wasRestored) {
+        mYouTubePlayer = youTubePlayer;
+        // Intall listeners on the youtube player
+        mYouTubePlayer.setPlayerStateChangeListener(this);
+        mYouTubePlayer.setPlaybackEventListener(this);
+        mYouTubePlayer.setOnFullscreenListener(this);
+
+        // Update config
+        mYouTubePlayer.setShowFullscreenButton(fullscreen);
+
+        // Emit 'onReady' event for player
+        mYouTubeView.playerViewDidBecomeReady(youTubePlayer);
+        setLoaded(true);
+
         if (!wasRestored) {
-
-            // Intall listeners on the youtube player
-            mYouTubePlayer = youTubePlayer;
-            mYouTubePlayer.setPlayerStateChangeListener(this);
-            mYouTubePlayer.setPlaybackEventListener(this);
-            mYouTubePlayer.setOnFullscreenListener(this);
-
-            // Update config
-            mYouTubePlayer.setShowFullscreenButton(fullscreen);
-
-            // Emit 'onReady' event for player
-            mYouTubeView.playerViewDidBecomeReady();
-            setLoaded(true);
-
             // Load/start the video in case it was initially provided
             if (videoId != null) {
                 if (isPlay()) {
-                    mYouTubePlayer.loadVideo(videoId);
+                    if (startTime != 0) {
+                        mYouTubePlayer.loadVideo(videoId, startTime * 1000); // Start time is in second, but require millisecond
+                    } else {
+                        mYouTubePlayer.loadVideo(videoId);
+                    }
+
                     if (!isPlayInline()) {
                         mYouTubePlayer.setFullscreen(true);
                     }
                 }
                 else {
-                    mYouTubePlayer.cueVideo(videoId);
+                    if (startTime != 0) {
+                        mYouTubePlayer.cueVideo(videoId, startTime * 1000); // Start time is in second, but require millisecond
+                    } else {
+                        mYouTubePlayer.cueVideo(videoId);
+                    }
                 }
             }
             updateControls();
+        } else {
+            mYouTubePlayer.loadVideo(videoId, startTime * 1000);
         }
     }
 
@@ -76,9 +107,9 @@ public class YouTubePlayerController implements
 
     @Override
     public void onPlaying() {
-        mYouTubeView.didChangeToState("playing");
+        mYouTubeView.didChangeToState("playing", mYouTubePlayer);
 
-        // When inline playback is not allowed, transition the 
+        // When inline playback is not allowed, transition the
         // player to full-screen.
         if (!isPlayInline()) {
             mYouTubePlayer.setFullscreen(true);
@@ -87,19 +118,19 @@ public class YouTubePlayerController implements
 
     @Override
     public void onPaused() {
-        mYouTubeView.didChangeToState("paused");
+        mYouTubeView.didChangeToState("paused", mYouTubePlayer);
     }
 
     @Override
     public void onStopped() {
-        mYouTubeView.didChangeToState("stopped");
+        mYouTubeView.didChangeToState("stopped", mYouTubePlayer);
     }
 
 
     @Override
     public void onBuffering(boolean b) {
         if (b)
-            mYouTubeView.didChangeToState("buffering");
+            mYouTubeView.didChangeToState("buffering", mYouTubePlayer);
 
         //Trick to remove when YouTube will patch it
         ProgressBar progressBar;
@@ -133,33 +164,34 @@ public class YouTubePlayerController implements
     }
 
     @Override
-    public void onSeekTo(int i) {
-
+    public void onSeekTo(int time) {
+        Log.d(TAG, "onSeekTo: " + time + ", lastCheck=" + mLastCheckTime);
+        mYouTubeView.didOnSeekTo(mLastCheckTime, time);
     }
 
     @Override
     public void onLoading() {
-        mYouTubeView.didChangeToState("loading");
+        mYouTubeView.didChangeToState("loading", mYouTubePlayer);
     }
 
     @Override
     public void onLoaded(String s) {
-        mYouTubeView.didChangeToState("loaded");
+        mYouTubeView.didChangeToState("loaded", mYouTubePlayer);
     }
 
     @Override
     public void onAdStarted() {
-        mYouTubeView.didChangeToState("adStarted");
+        mYouTubeView.didChangeToState("adStarted", mYouTubePlayer);
     }
 
     @Override
     public void onVideoStarted() {
-        mYouTubeView.didChangeToState("videoStarted");
+        mYouTubeView.didChangeToState("videoStarted", mYouTubePlayer);
     }
 
     @Override
     public void onVideoEnded() {
-        mYouTubeView.didChangeToState("ended");
+        mYouTubeView.didChangeToState("ended", mYouTubePlayer);
         if (isLoop()) {
             mYouTubePlayer.loadVideo(videoId);
             mYouTubePlayer.play();
@@ -176,7 +208,7 @@ public class YouTubePlayerController implements
 
     @Override
     public void onFullscreen(boolean isFullscreen) {
-        mYouTubeView.didChangeToState(isFullscreen ? "fullscreenMode" : "windowMode");
+        mYouTubeView.didChangeToState(isFullscreen ? "fullscreenMode" : "windowMode", mYouTubePlayer);
 
         // When exiting full-screen mode and inline playback is not enabled
         // then pause the video playback.
@@ -204,7 +236,6 @@ public class YouTubePlayerController implements
                 break;
         }
     }
-
 
     /**
      * GETTER &SETTER
@@ -299,6 +330,9 @@ public class YouTubePlayerController implements
         this.playInline = playInline;
     }
 
+    public void setStartTime(int startTime) {
+        this.startTime = startTime;
+    }
 
     public boolean isPlay() {
         return play;
@@ -334,5 +368,20 @@ public class YouTubePlayerController implements
 
     public boolean isFullscreen() {
         return fullscreen;
+    }
+
+    public int getStartTime() {
+        return startTime;
+    }
+
+    public int getCurrentTime() {
+        if (mYouTubePlayer == null) return 0;
+        return mYouTubePlayer.getCurrentTimeMillis() / 1000;
+    }
+
+    public void destroy() {
+        mCheckProgressTimerTask.purge();
+        mCheckProgressTimerTask.cancel();
+        mCheckProgressTimerTask = null;
     }
 }

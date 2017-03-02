@@ -8,21 +8,22 @@ import android.content.Context;
 import android.os.Build;
 import android.util.AttributeSet;
 import android.util.Log;
-import android.view.ViewTreeObserver;
 import android.widget.RelativeLayout;
 
 import com.facebook.react.bridge.Arguments;
 import com.facebook.react.bridge.ReactContext;
-import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.bridge.WritableMap;
-import com.facebook.react.uimanager.ThemedReactContext;
 import com.facebook.react.uimanager.events.RCTEventEmitter;
+import com.google.android.youtube.player.YouTubePlayer;
 import com.google.android.youtube.player.YouTubePlayerFragment;
 
 
 public class YouTubeView extends RelativeLayout {
 
+    private static final String TAG = "YouTubeView";
+
     YouTubePlayerController youtubeController;
+    YouTubeStateListener youtubeStateListener;
     private YouTubePlayerFragment youTubePlayerFragment;
     public static String youtube_key;
 
@@ -58,7 +59,7 @@ public class YouTubeView extends RelativeLayout {
 
     public void bindFragment() {
         FragmentManager fragmentManager;
-        if (getContext() instanceof ThemedReactContext) {
+        if (isReactContext()) {
             fragmentManager = getReactContext().getCurrentActivity().getFragmentManager();
         } else {
             fragmentManager = ((Activity) getContext()).getFragmentManager();
@@ -73,13 +74,20 @@ public class YouTubeView extends RelativeLayout {
     @Override
     protected void onDetachedFromWindow() {
         try {
-            FragmentManager fragmentManager = getReactContext().getCurrentActivity().getFragmentManager();
+            youtubeController.destroy();
+            FragmentManager fragmentManager;
+            if (isReactContext()) {
+                fragmentManager = getReactContext().getCurrentActivity().getFragmentManager();
+            } else {
+                fragmentManager = ((Activity) getContext()).getFragmentManager();
+            }
             youTubePlayerFragment = (YouTubePlayerFragment)
                     fragmentManager.findFragmentById(R.id.youtubeplayerfragment);
             FragmentTransaction ft = fragmentManager.beginTransaction();
             ft.remove(youTubePlayerFragment);
             ft.commit();
         } catch (Exception e) {
+            Log.e(TAG, "onDetachedFromWindow: ", e);
         }
         super.onDetachedFromWindow();
     }
@@ -89,56 +97,124 @@ public class YouTubeView extends RelativeLayout {
     }
 
 
-    public void playerViewDidBecomeReady() {
+    public void playerViewDidBecomeReady(YouTubePlayer player) {
         try {
             WritableMap event = Arguments.createMap();
-            ReactContext reactContext = (ReactContext) getContext();
             event.putInt("target", getId());
-            reactContext.getJSModule(RCTEventEmitter.class).receiveEvent(getId(), "ready", event);
+            event.putInt("videoLength", player.getDurationMillis());
+
+            if (isReactContext()) {
+                ReactContext reactContext = (ReactContext) getContext();
+                reactContext.getJSModule(RCTEventEmitter.class).receiveEvent(getId(), "ready", event);
+            }
+
+            if (youtubeStateListener != null) {
+                youtubeStateListener.onYoutubeVideoReady(event);
+            }
+
         } catch (Exception e) {
 
         }
     }
 
+    public void didOnSeekTo(int fromTime, int toTime) {
+        try {
+            WritableMap event = Arguments.createMap();
+            event.putInt("seekFrom", fromTime);
+            event.putInt("seekTo", toTime);
+            if (isReactContext()) {
+                ReactContext reactContext = (ReactContext) getContext();
+                reactContext.getJSModule(RCTEventEmitter.class).receiveEvent(getId(), "seek", event);
+            }
+            if (youtubeStateListener != null) {
+                youtubeStateListener.onYoutubeVideoSeekTo(event);
+            }
+        } catch (Exception e) {
 
-    public void didChangeToState(String param) {
+        }
+    }
+
+    public void didChangeToState(String param, YouTubePlayer youTubePlayer) {
         try {
             WritableMap event = Arguments.createMap();
             event.putString("state", param);
             event.putInt("target", getId());
-            ReactContext reactContext = (ReactContext) getContext();
-            reactContext.getJSModule(RCTEventEmitter.class).receiveEvent(getId(), "state", event);
-        } catch (Exception e) {
+            if (youTubePlayer != null) {
+                event.putInt("videoLength", youTubePlayer.getDurationMillis());
+                event.putInt("currentTime", youTubePlayer.getCurrentTimeMillis());
+            }
 
+            if (isReactContext()) {
+                ReactContext reactContext = (ReactContext) getContext();
+                reactContext.getJSModule(RCTEventEmitter.class).receiveEvent(getId(), "state", event);
+            }
+
+            if (youtubeStateListener != null) {
+                youtubeStateListener.onYoutubeVideoChangeState(event);
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "didChangeToState: ", e);
         }
     }
 
 
     public void didChangeToQuality(String param) {
-        WritableMap event = Arguments.createMap();
-        event.putString("quality", param);
-        event.putInt("target", getId());
-        ReactContext reactContext = (ReactContext) getContext();
-        reactContext.getJSModule(RCTEventEmitter.class).receiveEvent(getId(), "quality", event);
+        try {
+            WritableMap event = Arguments.createMap();
+            event.putString("quality", param);
+            event.putInt("target", getId());
+            if (isReactContext()) {
+                ReactContext reactContext = (ReactContext) getContext();
+                reactContext.getJSModule(RCTEventEmitter.class).receiveEvent(getId(), "quality", event);
+            }
+
+            if (youtubeStateListener != null) {
+                youtubeStateListener.onYoutubeVideoChangeQuality(event);
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "didChangeToQuality: ", e);
+        }
     }
 
 
-    public void didPlayTime(String current, String duration) {
-        WritableMap event = Arguments.createMap();
-        event.putString("currentTime", current);
-        event.putString("duration", duration);
-        event.putInt("target", getId());
-        ReactContext reactContext = (ReactContext) getContext();
-        reactContext.getJSModule(RCTEventEmitter.class).receiveEvent(getId(), "progress", event);
+    public void didPlayTime(int current, int duration) {
+        try {
+            WritableMap event = Arguments.createMap();
+            event.putInt("currentTime", current);
+            event.putInt("videoLength", duration);
+            event.putInt("target", getId());
+
+            if (isReactContext()) {
+                ReactContext reactContext = (ReactContext) getContext();
+                reactContext.getJSModule(RCTEventEmitter.class).receiveEvent(getId(), "progress", event);
+            }
+
+            if (youtubeStateListener != null) {
+                youtubeStateListener.onYoutubeVideoProgress(event);
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "didPlayTime: ", e);
+        }
     }
 
 
     public void receivedError(String param) {
-        WritableMap event = Arguments.createMap();
-        ReactContext reactContext = (ReactContext) getContext();
-        event.putString("error", param);
-        event.putInt("target", getId());
-        reactContext.getJSModule(RCTEventEmitter.class).receiveEvent(getId(), "error", event);
+        try {
+            WritableMap event = Arguments.createMap();
+            event.putString("error", param);
+            event.putInt("target", getId());
+
+            if (isReactContext()) {
+                ReactContext reactContext = (ReactContext) getContext();
+                reactContext.getJSModule(RCTEventEmitter.class).receiveEvent(getId(), "error", event);
+            }
+
+            if (youtubeStateListener != null) {
+                youtubeStateListener.onYoutubeVideoError(event);
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "receivedError: ", e);
+        }
     }
 
 
@@ -184,5 +260,21 @@ public class YouTubeView extends RelativeLayout {
 
     public void setFullscreen(Boolean bool) {
         youtubeController.setFullscreen(bool);
+    }
+
+    public void setStartTime(Integer startTime) {
+        youtubeController.setStartTime(startTime);
+    }
+
+    public void setYoutubeStateListener(YouTubeStateListener youtubeStateListener) {
+        this.youtubeStateListener = youtubeStateListener;
+    }
+
+    public int getCurrentTime() {
+        return youtubeController.getCurrentTime();
+    }
+
+    private boolean isReactContext() {
+        return getContext() instanceof ReactContext;
     }
 }

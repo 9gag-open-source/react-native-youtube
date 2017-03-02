@@ -1,10 +1,9 @@
 package com.inprogress.reactnativeyoutube;
 
-import android.content.Intent;
 import android.support.annotation.Nullable;
 import android.util.Log;
+import android.view.View;
 
-import com.facebook.react.bridge.ReactContext;
 import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.common.MapBuilder;
 import com.facebook.react.uimanager.SimpleViewManager;
@@ -20,6 +19,12 @@ public class YouTubeManager extends SimpleViewManager<YouTubeView> {
 
     public YouTubeView mYouTubeView;
 
+    /**
+     * An internal property to pass {@link View#getId()}
+     * to {@link YoutubePlayerActivity} for triggering RN events
+     */
+    public static final String PROP_INTERNAL_VIEW_ID = "viewId";
+
     public static final String PROP_VIDEO_ID = "videoId";
     public static final String PROP_API_KEY = "apiKey";
     public static final String PROP_INLINE = "playsInline";
@@ -31,6 +36,9 @@ public class YouTubeManager extends SimpleViewManager<YouTubeView> {
     public static final String PROP_REL = "rel";
     public static final String PROP_LOOP = "loop";
     public static final String PROP_FULLSCREEN = "fs";
+
+    //
+    public static final String PROP_START_TIME = "startTs";
 
     @Override
     public String getName() {
@@ -139,6 +147,12 @@ public class YouTubeManager extends SimpleViewManager<YouTubeView> {
             YouTubeView view, @Nullable Boolean param) {
         //Log.e(PROP_FULLSCREEN,""+param);
         view.setFullscreen(param);
+    }
+
+    @ReactProp(name = PROP_START_TIME)
+    public void setStartTime(
+            YouTubeView view, @Nullable Integer param) {
+        view.setStartTime(param);
     }
 
     @Override
