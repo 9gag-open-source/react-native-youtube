@@ -141,7 +141,14 @@ public class YoutubePlayerActivity extends ReactActivity {
 
             @Override
             public void onYoutubeVideoError(ReadableMap readableMap) {
+                int videoLength;
+                int currentVideoTime = readableMap.getInt("currentTime") / 1000;
+                int endTime = videoLength = readableMap.getInt("videoLength") / 1000; // TODO: End time suppose to be able to specify in the future
+
                 mEventDispatcher.dispatchEvent(new VideoErrorEvent(viewId, readableMap.getString("error")));
+                mEventDispatcher.dispatchEvent(new VideoStateEvent(viewId, currentVideoTime,
+                        videoLength, originalStartTs, endTime,
+                        autoPlay, VideoStateEvent.STATE_CANCELLED));
             }
 
             @Override
